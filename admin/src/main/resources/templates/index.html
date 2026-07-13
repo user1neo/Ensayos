@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>IronGym - Panel Administrativo</title>
+    <style>
+        :root {
+            --bg-dark: #111111;
+            --bg-card: #1a1a1a;
+            --orange-main: #f97316;
+            --orange-hover: #ea580c;
+            --text-gray: #9ca3af;
+            --border-color: #262626;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: var(--bg-dark); color: white; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; padding: 20px 0; }
+        .logo { padding: 0 25px; font-size: 22px; font-weight: bold; letter-spacing: 1px; color: white; display: flex; align-items: center; gap: 10px; }
+        .logo span { color: var(--orange-main); }
+        .menu { margin-top: 30px; display: flex; flex-direction: column; gap: 5px; }
+        .menu-item { padding: 12px 25px; color: var(--text-gray); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 15px; border-left: 4px solid transparent; transition: 0.2s; }
+        .menu-item:hover, .menu-item.active { color: white; background: #262626; border-left-color: var(--orange-main); }
+        .profile { padding: 15px 25px; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        .avatar { width: 35px; height: 35px; background: var(--orange-main); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+        /* MAIN CONTENT CONTAINER */
+        .content { flex: 1; padding: 40px; overflow-y: auto; }
+        h1 { font-size: 28px; margin-top: 0; margin-bottom: 5px; }
+        .subtitle { color: var(--text-gray); margin-bottom: 30px; font-size: 14px; }
+
+        /* DASHBOARD METRICS */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric-card { background: var(--bg-card); border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; position: relative; }
+        .metric-card h3 { margin: 0; font-size: 12px; color: var(--text-gray); text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-card .value { font-size: 32px; font-weight: bold; margin-top: 15px; display: block; }
+        .metric-card .sub-value { font-size: 13px; color: var(--orange-main); margin-top: 5px; display: block; }
+        .metric-card .green { color: #10b981; }
+
+        /* TABLES & CLIENTS VIEW */
+        .actions-bar { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; }
+        .search-box { background: var(--bg-card); border: 1px solid var(--border-color); padding: 10px 15px; border-radius: 6px; color: white; width: 300px; }
+        .btn-orange { background: var(--orange-main); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-orange:hover { background: var(--orange-hover); }
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
+        th, td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #1a1a1a; color: var(--text-gray); font-size: 13px; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge.Premium { background: rgba(249,115,22,0.15); color: var(--orange-main); }
+        .badge.Estándar { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .badge.Básico { background: rgba(156,163,175,0.15); color: #9ca3af; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        .status-dot.activo { background: #10b981; }
+        .status-dot.inactivo { background: #ef4444; }
+
+        /* CALCULATOR VIEW STYLE */
+        .calc-container { max-width: 700px; display: flex; flex-direction: column; gap: 20px; }
+        .calc-section { background: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; }
+        .calc-section h3 { margin-top: 0; font-size: 12px; color: var(--text-gray); text-transform: uppercase; margin-bottom: 15px; }
+        .plan-selectors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .plan-opt { border: 1px solid var(--border-color); padding: 15px; border-radius: 6px; cursor: pointer; text-align: center; }
+        .plan-opt.selected { border-color: var(--orange-main); background: rgba(249,115,22,0.05); }
+        .plan-opt h4 { margin: 0 0 5px 0; }
+        .plan-opt p { margin: 0; font-size: 13px; color: var(--text-gray); }
+        .duration-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .dur-btn { background: #262626; border: 1px solid transparent; color: white; padding: 10px; border-radius: 6px; cursor: pointer; }
+        .dur-btn.selected { background: rgba(249,115,22,0.15); border-color: var(--orange-main); color: var(--orange-main); }
+        .resumen-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .total-highlight { font-size: 24px; font-weight: bold; color: var(--orange-main); }
+
+        /* FORM CLIENTS MODAL/CONTAINER */
+        .form-container { background: var(--bg-card); border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; max-width: 500px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-gray); margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #262626; border: 1px solid var(--border-color); border-radius: 6px; color: white; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div>
+            <div class="logo">🏋️‍♂️ IRON<span>GYM</span></div>
+            <div class="menu">
+                <a th:href="@{/}" class="menu-item" th:classappend="${vista == 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
+                <a th:href="@{/clientes}" class="menu-item" th:classappend="${vista == 'clientes' ? 'active' : ''}">👥 Clientes</a>
+                <a th:href="@{/calculadora}" class="menu-item" th:classappend="${vista == 'calculadora' ? 'active' : ''}">🧮 Calculadora</a>
+            </div>
+        </div>
+        <div class="profile">
+            <div class="avatar">A</div>
+            <div>
+                <strong>Admin</strong><br>
+                <span style="color:var(--text-gray); font-size:11px;">admin@irongym.com</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <div th:if="${vista == 'dashboard'}">
+            <h1>MÉTRICAS Y DASHBOARD</h1>
+            <div class="subtitle">Resumen general — actualizado hoy</div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Total Clientes</h3>
+                    <span class="value" th:text="${totalClientes}">12</span>
+                </div>
+                <div class="metric-card">
+                    <h3>Clientes Activos</h3>
+                    <span class="value" th:text="${activos}">9</span>
+                </div>
+                <div class="metric-card">
+                    <h3>Clientes Inactivos</h3>
+                    <span class="value" th:text="${inactivos}">3</span>
+                </div>
+                <div class="metric-card">
+                    <h3>Ingresos Estimados</h3>
+                    <span class="value" th:text="'$' + ${#numbers.formatInteger(ingresos,3,'POINT')}">$0</span>
+                </div>
+            </div>
+            
+            <div class="calc-section">
+                <h3>Visualizaciones Estadísticas</h3>
+                <p style="color:var(--text-gray); font-size:14px;">[Panel de análisis de tendencias activado correctamente en base de datos local]</p>
+            </div>
+        </div>
+
+<!-- ================= SECCIÓN GESTIÓN DE CLIENTES ================= -->
+<div th:if="${vista == 'clientes'}" style="color: #ffffff; font-family: 'Inter', sans-serif; padding: 10px;">
+    
+    <!-- Encabezado -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+        <div>
+            <h1 style="font-size: 28px; font-weight: 800; letter-spacing: 0.5px; margin: 0 0 5px 0; color: #ffffff;">GESTIÓN DE CLIENTES</h1>
+            <div style="color: #666666; font-size: 14px;" th:text="${clientes != null ? clientes.size() : 0} + ' clientes registrados'">0 clientes registrados</div>
+        </div>
+        <!-- Botón corregido con color directo -->
+        <button type="button" onclick="abrirModalNuevo()" style="background: #f97316; color: #000000; font-weight: bold; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px; font-weight: bold;">+</span> Nuevo cliente
+        </button>
+    </div>
+
+    <!-- Barra de Búsqueda y Filtros -->
+    <div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 25px; align-items: center;">
+        <form th:action="@{/clientes}" method="GET" style="display: flex; flex-grow: 1; max-width: 65%;">
+            <div style="position: relative; width: 100%;">
+                <input type="text" name="buscar" th:value="${buscarQuery}" style="width: 100%; background: #141414; border: 1px solid #262626; color: #ffffff; padding: 12px 12px 12px 12px; border-radius: 6px; font-size: 14px;" placeholder="Buscar por nombre, email o cédula..." />
+            </div>
+            <a th:if="${buscarQuery}" th:href="@{/clientes}" style="margin-left: 10px; background: #262626; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-size: 13px; display: flex; align-items: center;">Limpiar</a>
+        </form>
+
+        <div style="display: flex; gap: 12px;">
+            <select id="filtroPlan" onchange="filtrarTabla()" style="background: #141414; border: 1px solid #262626; color: #ffffff; padding: 12px 20px; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                <option value="Todos">Todos los planes</option>
+                <option value="Básico">Básico</option>
+                <option value="Estándar">Estándar</option>
+                <option value="Premium">Premium</option>
+            </select>
+
+            <select id="filtroEstado" onchange="filtrarTabla()" style="background: #141414; border: 1px solid #262626; color: #ffffff; padding: 12px 20px; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                <option value="Todos">Todos los estados</option>
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabla de Clientes con protección de datos nulos -->
+    <div style="background: #111111; border: 1px solid #1a1a1a; border-radius: 8px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid #1a1a1a; background: #141414;">
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Cédula</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Nombre</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Contacto</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Edad</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Plan</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Estado</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase;">Ingreso</th>
+                    <th style="padding: 14px 20px; color: #555555; font-size: 11px; font-weight: bold; text-transform: uppercase; text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- th:each corregido y protegido -->
+                <tr th:each="c : ${clientes}" class="fila-cliente" th:data-plan="${c.membresia}" th:data-estado="${c.activo ? 'Activo' : 'Inactivo'}" style="border-bottom: 1px solid #161616; background: #111111;">
+                    <td style="padding: 16px 20px; font-size: 14px; color: #888888;" th:text="${c.id}"></td>
+                    <td style="padding: 16px 20px; font-size: 15px; font-weight: 600; color: #ffffff;" th:text="${c.nombre}"></td>
+                    <td style="padding: 16px 20px; font-size: 14px;">
+                        <span style="color: #ffffff; display: block;" th:text="${c.email}"></span>
+                        <span style="color: #555555; font-size: 12px;" th:text="${c.telefono}"></span>
+                    </td>
+                    <td style="padding: 16px 20px; font-size: 14px; color: #bbbbbb;" th:text="${c.edad}"></td>
+                    <td>
+                        <span th:text="${c.membresia}" style="padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; border: 1px solid;"
+                              th:styleappend="${c.membresia == 'Premium' ? 'background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.3); color: #f97316;' : 
+                                              (c.membresia == 'Estándar' ? 'background: rgba(234,179,8,0.1); border-color: rgba(234,179,8,0.3); color: #eab308;' : 
+                                              'background: rgba(14,165,233,0.1); border-color: rgba(14,165,233,0.3); color: #0ea5e9;')}">
+                        </span>
+                    </td>
+                    <td style="padding: 16px 20px; font-size: 14px; font-weight: 500;">
+                        <span th:style="${c.activo ? 'color: #10b981;' : 'color: #666666;'}">
+                            <span th:text="${c.activo ? '● Activo' : '● Inactivo'}"></span>
+                        </span>
+                    </td>
+                    <td style="padding: 16px 20px; font-size: 14px; color: #666666;" th:text="${c.fechaInicio}"></td>
+                    <td style="padding: 16px 20px; text-align: center;">
+                        <button type="button" th:onclick="'abrirModalEditar(' + ${c.id} + ',\'' + ${c.nombre} + '\',\'' + ${c.email} + '\',\'' + ${c.telefono} + '\',' + ${c.edad} + ',\'' + ${c.membresia} + '\',\'' + ${c.fechaInicio} + '\',\'' + ${c.fechaVence} + '\')'" style="background: none; border: none; color: #ffc107; cursor: pointer; font-size: 15px; margin-right: 12px;">✏️</button>
+                        <a th:href="@{/eliminar/{id}(id=${c.id})}" onclick="return confirm('¿Eliminar?')" style="color: #ef4444; text-decoration: none; font-size: 15px;">🗑️</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ================= VENTANA EMERGENTE (MODAL EXPLICITO) ================= -->
+    <div id="modalCliente" 
+         th:data-error="${error != null ? 'true' : 'false'}" 
+         th:data-edicion="${modoEdicion ? 'true' : 'false'}"
+         style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center;">
+        
+        <div style="background: #0f0f0f; border: 1px solid #222222; width: 450px; border-radius: 8px; padding: 25px; position: relative;">
+            <h3 id="modalTitulo" style="margin-top: 0; font-size: 20px; color: white; border-bottom: 1px solid #222222; padding-bottom: 12px;">Inscribir Nuevo Miembro</h3>
+            
+            <!-- Aseguramos que si clienteForm llega nulo de manera imprevista, no rompa la pantalla -->
+            <form th:action="@{/guardar}" method="POST" th:object="${clienteForm != null ? clienteForm : new com.irongym.model.Cliente()}">
+                <input type="hidden" id="formModoEdicion" name="modoEdicion" value="false" />
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Número de Cédula:</label>
+                    <input type="number" id="formId" name="id" th:value="*{id}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                </div>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Nombre Completo:</label>
+                    <input type="text" id="formNombre" name="nombre" th:value="*{nombre}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                    <div style="flex: 2;">
+                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Email:</label>
+                        <input type="email" id="formEmail" name="email" th:value="*{email}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Edad:</label>
+                        <input type="number" id="formEdad" name="edad" th:value="*{edad}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Teléfono:</label>
+                    <input type="text" id="formTelefono" name="telefono" th:value="*{telefono}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Membresía / Plan:</label>
+                    <select id="formMembresia" name="membresia" style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white; cursor:pointer;">
+                        <option value="Básico" th:selected="*{membresia == 'Básico'}">Básico</option>
+                        <option value="Estándar" th:selected="*{membresia == 'Estándar'}">Estándar</option>
+                        <option value="Premium" th:selected="*{membresia == 'Premium'}">Premium</option>
+                        <option value="Personalizado" th:selected="*{membresia == 'Personalizado'}">Personalizado</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Fecha Inicio:</label>
+                        <input type="date" id="formFechaInicio" name="fechaInicio" th:value="*{fechaInicio}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Fecha Vence:</label>
+                        <input type="date" id="formFechaVence" name="fechaVence" th:value="*{fechaVence}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="cerrarModal()" style="background: #222222; border: none; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer;">Cancelar</button>
+                    <button type="submit" style="background: #f97316; border: none; color: black; font-weight: bold; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Guardar Miembro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+        <div th:if="${vista == 'calculadora'}">
+            <h1>CALCULADORA DE PLAN</h1>
+            <div class="subtitle">Calculá el costo total según el plan, duración y descuento aplicado</div>
+
+            <div class="calc-container">
+                <div class="calc-section">
+                    <h3>Seleccionar Plan</h3>
+                    <div class="plan-selectors">
+                        <div class="plan-opt selected" onclick="selectPlan(this, 800, 'Básico')">
+                            <h4>BÁSICO</h4>
+                            <p>$ 800/día base</p>
+                        </div>
+                        <div class="plan-opt" onclick="selectPlan(this, 1200, 'Estándar')">
+                            <h4>ESTÁNDAR</h4>
+                            <p>$ 1.200/día base</p>
+                        </div>
+                        <div class="plan-opt" onclick="selectPlan(this, 1800, 'Premium')">
+                            <h4>PREMIUM</h4>
+                            <p>$ 1.800/día base</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calc-section">
+                    <h3>Costo por Día</h3>
+                    <input type="number" id="costoDia" value="800" oninput="calcularTotal()" style="width:100%; padding:10px; background:#262626; border:1px solid var(--border-color); color:white; border-radius:6px;" />
+                </div>
+
+                <div class="calc-section">
+                    <h3>Período de Tiempo</h3>
+                    <div class="duration-grid">
+                        <button class="dur-btn" onclick="selectDuration(this, 7)">1 semana</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 14)">2 semanas</button>
+                        <button class="dur-btn selected" onclick="selectDuration(this, 30)">1 mes</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 60)">2 meses</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 90)">3 meses</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 180)">6 meses</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 365)">1 año</button>
+                        <button class="dur-btn" onclick="selectDuration(this, 0)">Personalizado</button>
+                    </div>
+                    <div id="customDaysContainer" style="display:none; margin-top:15px;">
+                        <input type="number" id="diasPersonalizados" value="30" oninput="calcularTotal()" placeholder="Cantidad de días" style="width:100%; padding:10px; background:#262626; border:1px solid var(--border-color); color:white; border-radius:6px;" />
+                    </div>
+                </div>
+
+                <div class="calc-section">
+                    <h3>Resumen de Cotización</h3>
+                    <div class="resumen-row">
+                        <span>Plan Seleccionado</span>
+                        <span id="resPlan">Básico</span>
+                    </div>
+                    <div class="resumen-row">
+                        <span>Duración</span>
+                        <span id="resDias">30 días</span>
+                    </div>
+                    <div class="resumen-row" style="margin-top:15px; border-top:1px solid #333; padding-top:15px;">
+                        <strong>TOTAL</strong>
+                        <span class="total-highlight" id="resTotal">$24.000</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentPrice = 800;
+        let selectedDays = 30;
+        let planName = "Básico";
+
+        function selectPlan(element, price, name) {
+            document.querySelectorAll('.plan-opt').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('costoDia').value = price;
+            planName = name;
+            calcularTotal();
+        }
+
+        function selectDuration(element, days) {
+            document.querySelectorAll('.dur-btn').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            const customContainer = document.getElementById('customDaysContainer');
+            if(days === 0) {
+                customContainer.style.display = "block";
+                selectedDays = parseInt(document.getElementById('diasPersonalizados').value) || 0;
+            } else {
+                customContainer.style.display = "none";
+                selectedDays = days;
+            }
+            calcularTotal();
+        }
+
+        function calcularTotal() {
+            let pricePerDay = parseFloat(document.getElementById('costoDia').value) || 0;
+            
+            if (document.querySelector('.dur-btn:last-child').classList.contains('selected')) {
+                selectedDays = parseInt(document.getElementById('diasPersonalizados').value) || 0;
+            }
+            
+            let total = pricePerDay * selectedDays;
+            
+            document.getElementById('resPlan').innerText = planName;
+            document.getElementById('resDias').innerText = selectedDays + " días";
+            document.getElementById('resTotal').innerText = "$" + total.toLocaleString('es-AR');
+        }
+
+                // --- FUNCIONES CONTROLADORAS DEL MODAL ---
+        function abrirModalNuevo() {
+            document.getElementById('modalTitulo').innerText = 'Inscribir Nuevo Miembro';
+            document.getElementById('formModoEdicion').value = 'false';
+            document.getElementById('formId').readOnly = false;
+            
+            // Limpiar campos
+            document.getElementById('formId').value = '';
+            document.getElementById('formNombre').value = '';
+            document.getElementById('formEmail').value = '';
+            document.getElementById('formEdad').value = '';
+            document.getElementById('formTelefono').value = '';
+            document.getElementById('formMembresia').value = 'Básico';
+            document.getElementById('formFechaInicio').value = '';
+            document.getElementById('formFechaVence').value = '';
+
+            document.getElementById('modalCliente').style.display = 'flex';
+        }
+
+        function abrirModalEditar(id, nombre, email, telefono, edad, membresia, inicio, vence) {
+            document.getElementById('modalTitulo').innerText = 'Modificar Registro';
+            document.getElementById('formModoEdicion').value = 'true';
+            document.getElementById('formId').readOnly = true; // No permite editar la cédula (llave primaria)
+            
+            // Asignar los valores del cliente seleccionado al formulario
+            document.getElementById('formId').value = id;
+            document.getElementById('formNombre').value = nombre;
+            document.getElementById('formEmail').value = email;
+            document.getElementById('formEdad').value = edad;
+            document.getElementById('formTelefono').value = telefono;
+            document.getElementById('formMembresia').value = membresia;
+            document.getElementById('formFechaInicio').value = inicio;
+            document.getElementById('formFechaVence').value = vence;
+
+            document.getElementById('modalCliente').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalCliente').style.display = 'none';
+        }
+
+        // Asegurar que si hay errores de validación de Spring, la ventana vuelva a abrirse sola
+        window.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('modalCliente');
+            if (modal) {
+                const errorPresente = modal.getAttribute('data-error') === 'true';
+                const modoEdicion = modal.getAttribute('data-edicion') === 'true';
+
+                if (errorPresente) {
+                    modal.style.display = 'flex';
+                    if (modoEdicion) {
+                        document.getElementById('modalTitulo').innerText = 'Modificar Registro';
+                        document.getElementById('formId').readOnly = true;
+                    }
+                }
+            }
+        });
+        
+        function filtrarTabla() {
+            const planSeleccionado = document.getElementById('filtroPlan').value;
+            const estadoSeleccionado = document.getElementById('filtroEstado').value;
+            const filas = document.querySelectorAll('.fila-cliente');
+
+            filas.forEach(fila => {
+                const planFila = fila.getAttribute('data-plan');
+                const estadoFila = fila.getAttribute('data-estado');
+
+                
+                const cumplePlan = (planSeleccionado === 'Todos' || planFila === planSeleccionado);
+                const cumpleEstado = (estadoSeleccionado === 'Todos' || estadoFila === estadoSeleccionado);
+
+                if (cumplePlan && cumpleEstado) {
+                    fila.style.display = ''; 
+                } else {
+                    fila.style.display = 'none'; 
+                }
+            });
+        }
+    </script>
+</body>
+</html>
