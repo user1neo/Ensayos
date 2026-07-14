@@ -182,7 +182,6 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- th:each corregido y protegido -->
                 <tr th:each="c : ${clientes}" class="fila-cliente" th:data-plan="${c.membresia}" th:data-estado="${c.activo ? 'Activo' : 'Inactivo'}" style="border-bottom: 1px solid #161616; background: #111111;">
                     <td style="padding: 16px 20px; font-size: 14px; color: #888888;" th:text="${c.id}"></td>
                     <td style="padding: 16px 20px; font-size: 15px; font-weight: 600; color: #ffffff;" th:text="${c.nombre}"></td>
@@ -205,8 +204,20 @@
                     </td>
                     <td style="padding: 16px 20px; font-size: 14px; color: #666666;" th:text="${c.fechaInicio}"></td>
                     <td style="padding: 16px 20px; text-align: center;">
-                        <button type="button" th:onclick="'abrirModalEditar(' + ${c.id} + ',\'' + ${c.nombre} + '\',\'' + ${c.email} + '\',\'' + ${c.telefono} + '\',' + ${c.edad} + ',\'' + ${c.membresia} + '\',\'' + ${c.fechaInicio} + '\',\'' + ${c.fechaVence} + '\')'" style="background: none; border: none; color: #ffc107; cursor: pointer; font-size: 15px; margin-right: 12px;">✏️</button>
-                        <a th:href="@{/eliminar/{id}(id=${c.id})}" onclick="return confirm('¿Eliminar?')" style="color: #ef4444; text-decoration: none; font-size: 15px;">🗑️</a>
+                       <button type="button" 
+            th:data-id="${c.id}"
+            th:data-nombre="${c.nombre}"
+            th:data-email="${c.email}"
+            th:data-telefono="${c.telefono}"
+            th:data-edad="${c.edad}"
+            th:data-membresia="${c.membresia}"
+            th:data-inicio="${c.fechaInicio}"
+            th:data-vence="${c.fechaVence}"
+            onclick="prepararEdicion(this)" 
+            style="background: none; border: none; color: #ffc107; cursor: pointer; font-size: 15px; margin-right: 12px;">
+        ✏️
+    </button>
+    <a th:href="@{/eliminar/{id}(id=${c.id})}" onclick="return confirm('¿Eliminar?')" style="color: #ef4444; text-decoration: none; font-size: 15px;">🗑️</a>
                     </td>
                 </tr>
             </tbody>
@@ -445,6 +456,23 @@
                 }
             }
         });
+
+        function prepararEdicion(boton) {
+            // Extraemos los datos seguros del elemento HTML
+            const id = boton.getAttribute('data-id');
+            const nombre = boton.getAttribute('data-nombre');
+            const email = boton.getAttribute('data-email');
+            const telefono = boton.getAttribute('data-telefono');
+            const edad = boton.getAttribute('data-edad');
+            const membresia = boton.getAttribute('data-membresia');
+            const inicio = boton.getAttribute('data-inicio');
+            const vence = boton.getAttribute('data-vence');
+
+            // Invocamos tu función existente mapeando los datos extraídos
+            if (typeof abrirModalEditar === 'function') {
+                abrirModalEditar(id, nombre, email, telefono, edad, membresia, inicio, vence);
+            }
+        }
         
         function filtrarTabla() {
             const planSeleccionado = document.getElementById('filtroPlan').value;
