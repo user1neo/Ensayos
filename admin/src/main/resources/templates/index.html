@@ -73,6 +73,14 @@
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; color: var(--text-gray); margin-bottom: 5px; }
         .form-group input, .form-group select { width: 100%; padding: 10px; background: #262626; border: 1px solid var(--border-color); border-radius: 6px; color: white; box-sizing: border-box; }
+        .form-grid { display: grid; gap: 12px; }
+        .form-grid.two-cols { grid-template-columns: 1fr 1fr; }
+        .form-input { width: 100%; padding: 11px 12px; background: #161616; border: 1px solid #333; border-radius: 6px; color: white; box-sizing: border-box; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        .form-input:focus { outline: none; border-color: var(--orange-main); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
+        .form-input.is-invalid { border-color: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,0.12); }
+        .helper-text { font-size: 12px; color: #6b7280; margin-top: 6px; }
+        .validation-error { color: #fca5a5; font-size: 13px; margin-top: 6px; min-height: 18px; }
+        .modal-note { margin-bottom: 16px; color: #cbd5e1; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -234,53 +242,86 @@
             <h3 id="modalTitulo" style="margin-top: 0; font-size: 20px; color: white; border-bottom: 1px solid #222222; padding-bottom: 12px;">Inscribir Nuevo Miembro</h3>
             
             <!-- Aseguramos que si clienteForm llega nulo de manera imprevista, no rompa la pantalla -->
-            <form th:action="@{/guardar}" method="POST" th:object="${clienteForm != null ? clienteForm : new com.irongym.model.Cliente()}">
+            <form id="formCliente" th:action="@{/guardar}" method="POST" th:object="${clienteForm}">
                 <input type="hidden" id="formModoEdicion" name="modoEdicion" value="false" />
+                <div class="modal-note">Completa los campos para registrar o actualizar un cliente. Los mensajes aparecerán aquí si algo falta.</div>
                 
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Número de Cédula:</label>
-                    <input type="number" id="formId" name="id" th:value="*{id}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
-                </div>
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Nombre Completo:</label>
-                    <input type="text" id="formNombre" name="nombre" th:value="*{nombre}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="flex: 2;">
-                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Email:</label>
-                        <input type="email" id="formEmail" name="email" th:value="*{email}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                <div class="form-group">
+                    <label for="formId">Número de Cédula</label>
+                    <input type="text" inputmode="numeric" id="formId" name="id" th:value="*{id}" required class="form-input" th:classappend="${#fields.hasErrors('id')} ? 'is-invalid' : ''" pattern="[0-9]{1,10}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)" />
+                    <div class="helper-text">Solo se permiten números enteros positivos, máximo 10 dígitos.</div>
+                    <div class="validation-error" id="formIdError" th:if="${#fields.hasErrors('id')}">
+                        <span th:each="err : ${#fields.errors('id')}" th:text="${err}"></span>
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Edad:</label>
-                        <input type="number" id="formEdad" name="edad" th:value="*{edad}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="formNombre">Nombre Completo</label>
+                    <input type="text" id="formNombre" name="nombre" th:value="*{nombre}" required class="form-input" th:classappend="${#fields.hasErrors('nombre')} ? 'is-invalid' : ''" oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, '')" />
+                    <div class="helper-text">Solo letras y espacios, sin números ni caracteres especiales.</div>
+                    <div class="validation-error" id="formNombreError" th:if="${#fields.hasErrors('nombre')}">
+                        <span th:each="err : ${#fields.errors('nombre')}" th:text="${err}"></span>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Teléfono:</label>
-                    <input type="text" id="formTelefono" name="telefono" th:value="*{telefono}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                <div th:if="${error != null}" style="margin-bottom: 12px; padding: 10px; background: rgba(248, 113, 113, 0.12); border: 1px solid #f87171; color: #fca5a5; border-radius: 6px; font-size: 13px;">
+                    <span th:text="${error}"></span>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Membresía / Plan:</label>
-                    <select id="formMembresia" name="membresia" style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white; cursor:pointer;">
+                <div class="form-grid two-cols" style="margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label for="formEmail">Email</label>
+                        <input type="email" id="formEmail" name="email" th:value="*{email}" required class="form-input" th:classappend="${#fields.hasErrors('email')} ? 'is-invalid' : ''" />
+                        <div class="validation-error" id="formEmailError" th:if="${#fields.hasErrors('email')}">
+                            <span th:each="err : ${#fields.errors('email')}" th:text="${err}"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="formEdad">Edad</label>
+                        <input type="number" id="formEdad" name="edad" th:value="*{edad}" required min="12" max="100" class="form-input" th:classappend="${#fields.hasErrors('edad')} ? 'is-invalid' : ''" oninput="validarEdad(this); limpiarError('formEdad')" />
+                        <div id="mensajeEdad" style="display:none; color:#f87171; font-size:12px; margin-top:6px;"></div>
+                        <div class="validation-error" id="formEdadError" th:if="${#fields.hasErrors('edad')}">
+                            <span th:each="err : ${#fields.errors('edad')}" th:text="${err}"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="formTelefono">Teléfono</label>
+                    <input type="text" inputmode="numeric" id="formTelefono" name="telefono" th:value="*{telefono}" required class="form-input" th:classappend="${#fields.hasErrors('telefono')} ? 'is-invalid' : ''" pattern="^3\d{9}$" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)" />
+                    <div class="helper-text">Debe contener 10 dígitos y empezar en 3.</div>
+                    <div class="validation-error" id="formTelefonoError" th:if="${#fields.hasErrors('telefono')}">
+                        <span th:each="err : ${#fields.errors('telefono')}" th:text="${err}"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="formMembresia">Membresía / Plan</label>
+                    <select id="formMembresia" name="membresia" th:field="*{membresia}" class="form-input" th:classappend="${#fields.hasErrors('membresia')} ? 'is-invalid' : ''">
                         <option value="Básico" th:selected="*{membresia == 'Básico'}">Básico</option>
                         <option value="Estándar" th:selected="*{membresia == 'Estándar'}">Estándar</option>
                         <option value="Premium" th:selected="*{membresia == 'Premium'}">Premium</option>
                         <option value="Personalizado" th:selected="*{membresia == 'Personalizado'}">Personalizado</option>
                     </select>
+                    <div class="validation-error" id="formMembresiaError" th:if="${#fields.hasErrors('membresia')}">
+                        <span th:each="err : ${#fields.errors('membresia')}" th:text="${err}"></span>
+                    </div>
                 </div>
 
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <div style="flex: 1;">
-                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Fecha Inicio:</label>
-                        <input type="date" id="formFechaInicio" name="fechaInicio" th:value="*{fechaInicio}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                <div class="form-grid two-cols" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="formFechaInicio">Fecha Inicio</label>
+                        <input type="date" id="formFechaInicio" name="fechaInicio" th:value="*{fechaInicio}" required class="form-input" th:classappend="${#fields.hasErrors('fechaInicio')} ? 'is-invalid' : ''" />
+                        <div class="validation-error" id="formFechaInicioError" th:if="${#fields.hasErrors('fechaInicio')}">
+                            <span th:each="err : ${#fields.errors('fechaInicio')}" th:text="${err}"></span>
+                        </div>
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display:block; font-size: 12px; color: #888888; margin-bottom: 5px;">Fecha Vence:</label>
-                        <input type="date" id="formFechaVence" name="fechaVence" th:value="*{fechaVence}" required style="width:100%; background:#161616; border:1px solid #333; padding:10px; border-radius:4px; color:white;" />
+                    <div class="form-group">
+                        <label for="formFechaVence">Fecha Vence</label>
+                        <input type="date" id="formFechaVence" name="fechaVence" th:value="*{fechaVence}" required class="form-input" th:classappend="${#fields.hasErrors('fechaVence')} ? 'is-invalid' : ''" />
+                        <div class="validation-error" id="formFechaVenceError" th:if="${#fields.hasErrors('fechaVence')}">
+                            <span th:each="err : ${#fields.errors('fechaVence')}" th:text="${err}"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -400,6 +441,97 @@
         }
 
                 // --- FUNCIONES CONTROLADORAS DEL MODAL ---
+        function validarEdad(input) {
+            const mensaje = document.getElementById('mensajeEdad');
+            const valor = Number(input.value);
+
+            if (input.value === '') {
+                mensaje.style.display = 'none';
+                return;
+            }
+
+            if (Number.isNaN(valor) || valor < 12 || valor > 100) {
+                mensaje.textContent = 'La edad debe estar entre 12 y 100 años.';
+                mensaje.style.display = 'block';
+            } else {
+                mensaje.textContent = '';
+                mensaje.style.display = 'none';
+            }
+        }
+
+        function mostrarError(id, mensaje) {
+            const input = document.getElementById(id);
+            const errorBox = document.getElementById(id + 'Error');
+            if (input) input.classList.add('is-invalid');
+            if (errorBox) errorBox.textContent = mensaje;
+        }
+
+        function limpiarError(id) {
+            const input = document.getElementById(id);
+            const errorBox = document.getElementById(id + 'Error');
+            if (input) input.classList.remove('is-invalid');
+            if (errorBox) errorBox.textContent = '';
+        }
+
+        function validarFormularioCliente(event) {
+            let valido = true;
+            const campos = ['formId', 'formNombre', 'formEmail', 'formEdad', 'formTelefono', 'formMembresia', 'formFechaInicio', 'formFechaVence'];
+            campos.forEach(campo => limpiarError(campo));
+
+            const cedula = document.getElementById('formId').value.trim();
+            const nombre = document.getElementById('formNombre').value.trim();
+            const email = document.getElementById('formEmail').value.trim();
+            const edad = Number(document.getElementById('formEdad').value);
+            const telefono = document.getElementById('formTelefono').value.trim();
+            const membresia = document.getElementById('formMembresia').value;
+            const inicio = document.getElementById('formFechaInicio').value;
+            const vence = document.getElementById('formFechaVence').value;
+
+            if (!/^[0-9]{1,10}$/.test(cedula)) {
+                mostrarError('formId', 'La cédula debe ser un número entero positivo de hasta 10 dígitos, sin puntos ni comas.');
+                valido = false;
+            } else if (Number(cedula) <= 0) {
+                mostrarError('formId', 'La cédula debe ser mayor que cero.');
+                valido = false;
+            }
+            if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/.test(nombre) || nombre.length < 3) {
+                mostrarError('formNombre', 'El nombre solo puede tener letras y espacios, sin números ni caracteres especiales.');
+                valido = false;
+            }
+            if (!email.includes('@') || !email.includes('.')) {
+                mostrarError('formEmail', 'Ingresa un correo válido, por ejemplo: nombre@dominio.com.');
+                valido = false;
+            }
+            if (!Number.isInteger(edad) || edad < 12 || edad > 100) {
+                mostrarError('formEdad', 'La edad debe estar entre 12 y 100 años.');
+                valido = false;
+            }
+            if (!/^3\d{9}$/.test(telefono)) {
+                mostrarError('formTelefono', 'El teléfono debe tener 10 dígitos y empezar en 3.');
+                valido = false;
+            }
+            if (!membresia) {
+                mostrarError('formMembresia', 'Selecciona un plan para continuar.');
+                valido = false;
+            }
+            if (!inicio) {
+                mostrarError('formFechaInicio', 'Selecciona la fecha de inicio.');
+                valido = false;
+            }
+            if (!vence) {
+                mostrarError('formFechaVence', 'Selecciona la fecha de vencimiento.');
+                valido = false;
+            }
+            if (inicio && vence && vence < inicio) {
+                mostrarError('formFechaVence', 'La fecha de vencimiento no puede ser anterior a la de inicio.');
+                valido = false;
+            }
+
+            if (!valido) {
+                event.preventDefault();
+            }
+        }
+
         function abrirModalNuevo() {
             document.getElementById('modalTitulo').innerText = 'Inscribir Nuevo Miembro';
             document.getElementById('formModoEdicion').value = 'false';
@@ -414,6 +546,8 @@
             document.getElementById('formMembresia').value = 'Básico';
             document.getElementById('formFechaInicio').value = '';
             document.getElementById('formFechaVence').value = '';
+            document.getElementById('mensajeEdad').style.display = 'none';
+            ['formId','formNombre','formEmail','formEdad','formTelefono','formMembresia','formFechaInicio','formFechaVence'].forEach(campo => limpiarError(campo));
 
             document.getElementById('modalCliente').style.display = 'flex';
         }
@@ -432,6 +566,8 @@
             document.getElementById('formMembresia').value = membresia;
             document.getElementById('formFechaInicio').value = inicio;
             document.getElementById('formFechaVence').value = vence;
+            validarEdad(document.getElementById('formEdad'));
+            ['formId','formNombre','formEmail','formEdad','formTelefono','formMembresia','formFechaInicio','formFechaVence'].forEach(campo => limpiarError(campo));
 
             document.getElementById('modalCliente').style.display = 'flex';
         }
@@ -443,12 +579,30 @@
         // Asegurar que si hay errores de validación de Spring, la ventana vuelva a abrirse sola
         window.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('modalCliente');
+            const form = document.getElementById('formCliente');
+
+            if (form) {
+                form.addEventListener('submit', validarFormularioCliente);
+                ['formNombre','formEmail','formEdad','formTelefono','formMembresia','formFechaInicio','formFechaVence'].forEach(campoId => {
+                    const campo = document.getElementById(campoId);
+                    if (campo) {
+                        campo.addEventListener('input', () => limpiarError(campoId));
+                        campo.addEventListener('change', () => limpiarError(campoId));
+                    }
+                });
+                const cedula = document.getElementById('formId');
+                if (cedula) {
+                    cedula.addEventListener('input', () => limpiarError('formId'));
+                }
+            }
+
             if (modal) {
                 const errorPresente = modal.getAttribute('data-error') === 'true';
                 const modoEdicion = modal.getAttribute('data-edicion') === 'true';
 
                 if (errorPresente) {
                     modal.style.display = 'flex';
+                    validarEdad(document.getElementById('formEdad'));
                     if (modoEdicion) {
                         document.getElementById('modalTitulo').innerText = 'Modificar Registro';
                         document.getElementById('formId').readOnly = true;

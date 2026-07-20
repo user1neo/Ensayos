@@ -15,6 +15,11 @@ public class ClienteController {
     @Autowired
     private ClienteRepository clienteRepository;
 
+    @ModelAttribute("clienteForm")
+    public Cliente clienteForm() {
+        return new Cliente();
+    }
+
     @GetMapping("/")
     public String verDashboard(Model model) {
         List<Cliente> clientes = clienteRepository.findAll();
@@ -94,14 +99,22 @@ public class ClienteController {
             @Valid @ModelAttribute("clienteForm") Cliente cliente,
             BindingResult result,
             @RequestParam("modoEdicion") boolean modoEdicion,
-            RedirectAttributes redirectAttributes) {
-        
+            RedirectAttributes redirectAttributes,
+            org.springframework.ui.Model model) { // 📌 Agregamos el Model aquí
+
         // 1. Validaciones estructurales anotadas de Jakarta (Spring)
         if (result.hasErrors()) {
-            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.clienteForm", result);
-            redirectAttributes.addFlashAttribute("clienteForm", cliente);
-            redirectAttributes.addFlashAttribute("error", "Por favor corrige los campos marcados.");
-            return "redirect:/clientes";
+            String mensajeError = "Por favor corrige los campos marcados.";
+            if (result.hasFieldErrors("edad")) {
+                mensajeError = "La edad ingresada no es válida. Debe estar entre 12 y 100 años.";
+            }
+
+            model.addAttribute("clientes", clienteRepository.findAll());
+            model.addAttribute("vista", "clientes");
+            model.addAttribute("error", mensajeError);
+            model.addAttribute("modoEdicion", modoEdicion);
+            model.addAttribute("clienteForm", cliente);
+            return "index";
         }
 
         // 📌 ASIGNACIÓN DE COSTO DIARIO SEGÚN EL PLAN SELECCIONADO
@@ -110,24 +123,28 @@ public class ClienteController {
                 case "Estándar" -> 1200;
                 case "Premium" -> 1800;
                 case "Básico" -> 800;
-                default -> 800; // Por si eligen personalizado o vacío sin especificar valor
+                default -> 800;
             };
             cliente.setCostoDia(costoAsignado);
         }
+
         // 2. Validación de lógica de negocio (Fechas consistentes)
         if (!cliente.tieneFechasValidas()) {
-            redirectAttributes.addFlashAttribute("clienteForm", cliente);
-            redirectAttributes.addFlashAttribute("error", "Error: La fecha de vencimiento no puede ser anterior a la de inicio.");
-            return "redirect:/clientes";
+            model.addAttribute("clientes", clienteRepository.findAll());
+            model.addAttribute("vista", "clientes");
+            model.addAttribute("error", "Error: La fecha de vencimiento no puede ser anterior a la de inicio.");
+            return "index"; // ✏️ Retorno directo
         }
 
         // 3. Validación de Llave Primaria Duplicada
         if (!modoEdicion && clienteRepository.existsById(cliente.getId())) {
-            redirectAttributes.addFlashAttribute("clienteForm", cliente);
-            redirectAttributes.addFlashAttribute("error", "La cédula ingresada ya está registrada.");
-            return "redirect:/clientes";
+            model.addAttribute("clientes", clienteRepository.findAll());
+            model.addAttribute("vista", "clientes");
+            model.addAttribute("error", "La cédula ingresada ya está registrada.");
+            return "index"; // ✏️ Retorno directo
         }
 
+        // Si todo sale bien, AQUÍ SÍ se usa el redirect original
         clienteRepository.save(cliente);
         redirectAttributes.addFlashAttribute("exito", "Cliente procesado exitosamente.");
         return "redirect:/clientes";
