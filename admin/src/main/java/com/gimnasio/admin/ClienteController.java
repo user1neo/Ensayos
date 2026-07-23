@@ -8,12 +8,16 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class ClienteController {
 
     @Autowired
     private ClienteRepository clienteRepository;
+
+    @Autowired
+    private EstadisticasService estadisticasService;
 
     @ModelAttribute("clienteForm")
     public Cliente clienteForm() {
@@ -43,10 +47,19 @@ public class ClienteController {
             return precioPorDia * diasDuracion;
         }).sum();
 
+        int anioActual = estadisticasService.getAnioActual();
+        List<Long> registrosMensuales = estadisticasService.contarRegistrosPorMes(anioActual);
+        Map<String, Long> planesHistorico = estadisticasService.contarPorPlan(false);
+        Map<String, Long> planesActivos = estadisticasService.contarPorPlan(true);
+
         model.addAttribute("totalClientes", totalClientes);
         model.addAttribute("activos", activos);
         model.addAttribute("inactivos", inactivos);
         model.addAttribute("ingresos", ingresosEstimados);
+        model.addAttribute("anioEstadisticas", anioActual);
+        model.addAttribute("registrosCsv", estadisticasService.registrosComoCsv(registrosMensuales));
+        model.addAttribute("planesHistorico", planesHistorico);
+        model.addAttribute("planesActivos", planesActivos);
         model.addAttribute("vista", "dashboard");
         return "index";
     }

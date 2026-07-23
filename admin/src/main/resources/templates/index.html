@@ -81,6 +81,22 @@
         .helper-text { font-size: 12px; color: #6b7280; margin-top: 6px; }
         .validation-error { color: #fca5a5; font-size: 13px; margin-top: 6px; min-height: 18px; }
         .modal-note { margin-bottom: 16px; color: #cbd5e1; font-size: 13px; }
+
+        /* DASHBOARD CHARTS */
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-card { background: var(--bg-card); border: 1px solid var(--border-color); padding: 24px; border-radius: 8px; min-height: 340px; display: flex; flex-direction: column; }
+        .chart-card h3 { margin: 0; font-size: 12px; color: var(--text-gray); text-transform: uppercase; letter-spacing: 0.5px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; }
+        .chart-filter { background: #262626; border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+        .chart-canvas-wrap { flex: 1; position: relative; min-height: 260px; }
+        .donut-layout { display: flex; align-items: center; gap: 24px; flex: 1; }
+        .donut-canvas-wrap { flex: 1; position: relative; min-height: 220px; max-width: 220px; }
+        .plan-legend { display: flex; flex-direction: column; gap: 14px; min-width: 140px; }
+        .plan-legend-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--text-gray); text-transform: uppercase; letter-spacing: 0.3px; }
+        .plan-legend-label { display: flex; align-items: center; gap: 8px; }
+        .plan-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .plan-legend-value { color: white; font-weight: 600; font-size: 14px; }
+        @media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -128,9 +144,41 @@
                 </div>
             </div>
             
-            <div class="calc-section">
-                <h3>Visualizaciones Estadísticas</h3>
-                <p style="color:var(--text-gray); font-size:14px;">[Panel de análisis de tendencias activado correctamente en base de datos local]</p>
+            <div class="calc-section" style="padding: 0; border: none; background: transparent;">
+                <h3 style="margin-bottom: 20px;">Visualizaciones Estadísticas</h3>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Registros Mensuales</h3>
+                        <div class="chart-canvas-wrap" style="margin-top: 20px;">
+                            <canvas id="chartRegistros"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Distribución por Plan</h3>
+                            <select id="filtroPlanChart" class="chart-filter" onchange="actualizarGraficoPlanes()">
+                                <option value="activos">Clientes activos</option>
+                                <option value="historico">Todo el histórico</option>
+                            </select>
+                        </div>
+                        <div class="donut-layout">
+                            <div class="donut-canvas-wrap">
+                                <canvas id="chartPlanes"></canvas>
+                            </div>
+                            <div id="planLegend" class="plan-legend"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dashboardData" style="display:none" th:attr="data-registros=${registrosCsv}"></div>
+            <div id="planesActivosData" style="display:none">
+                <span th:each="entry : ${planesActivos}" class="plan-stat"
+                      th:attr="data-plan=${entry.key}, data-count=${entry.value}"></span>
+            </div>
+            <div id="planesHistoricoData" style="display:none">
+                <span th:each="entry : ${planesHistorico}" class="plan-stat"
+                      th:attr="data-plan=${entry.key}, data-count=${entry.value}"></span>
             </div>
         </div>
 
@@ -397,6 +445,201 @@
         </div>
 
     </div>
+
+    <script th:if="${vista == 'dashboard'}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script th:if="${vista == 'dashboard'}">
+        (function () {
+            function leerPlanData(containerId) {
+                const data = {};
+                document.querySelectorAll('#' + containerId + ' .plan-stat').forEach(function (el) {
+                    data[el.getAttribute('data-plan')] = parseInt(el.getAttribute('data-count'), 10);
+                });
+                return data;
+            }
+
+            const mesesLabels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            const registrosRaw = document.getElementById('dashboardData').getAttribute('data-registros');
+            const registrosMensuales = registrosRaw
+                ? registrosRaw.split(',').map(function (n) { return parseInt(n, 10); })
+                : [];
+            const planesActivos = leerPlanData('planesActivosData');
+            const planesHistorico = leerPlanData('planesHistoricoData');
+
+            const coloresPlan = {
+                'Básico': '#48CAE4',
+                'Estándar': '#FBBF24',
+                'Premium': '#F97316',
+                'Personalizado': '#A78BFA'
+            };
+
+            let chartRegistros = null;
+            let chartPlanes = null;
+
+            function calcularEjeYMaximo(valores) {
+                const max = Math.max(...valores, 0);
+                if (max === 0) return 4;
+                const paso = Math.ceil(max / 4);
+                return paso * 4;
+            }
+
+            function initChartRegistros() {
+                const ctx = document.getElementById('chartRegistros');
+                if (!ctx) return;
+
+                const yMax = calcularEjeYMaximo(registrosMensuales);
+
+                chartRegistros = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: mesesLabels,
+                        datasets: [{
+                            data: registrosMensuales,
+                            backgroundColor: '#F97316',
+                            hoverBackgroundColor: '#FB923C',
+                            borderRadius: { topLeft: 4, topRight: 4 },
+                            borderSkipped: false,
+                            maxBarThickness: 28
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#262626',
+                                borderColor: '#404040',
+                                borderWidth: 1,
+                                titleColor: '#ffffff',
+                                bodyColor: '#F97316',
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (items) => items[0].label,
+                                    label: (ctx) => 'Registros : ' + ctx.parsed.y
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 11 } },
+                                border: { display: false }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                max: yMax,
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 11 },
+                                    stepSize: yMax / 4,
+                                    precision: 0
+                                },
+                                grid: { color: '#2a2a2a', drawBorder: false },
+                                border: { display: false, dash: [4, 4] }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderPlanLegend(data) {
+                const legend = document.getElementById('planLegend');
+                if (!legend) return;
+                legend.innerHTML = '';
+
+                const entries = Object.entries(data);
+                if (entries.length === 0) {
+                    legend.innerHTML = '<span style="color:#6b7280;font-size:13px;">Sin datos</span>';
+                    return;
+                }
+
+                entries.forEach(([plan, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'plan-legend-item';
+
+                    const labelWrap = document.createElement('span');
+                    labelWrap.className = 'plan-legend-label';
+
+                    const dot = document.createElement('span');
+                    dot.className = 'plan-legend-dot';
+                    dot.style.background = coloresPlan[plan] || '#9ca3af';
+
+                    labelWrap.appendChild(dot);
+                    labelWrap.appendChild(document.createTextNode(plan.toUpperCase()));
+
+                    const value = document.createElement('span');
+                    value.className = 'plan-legend-value';
+                    value.textContent = count;
+
+                    item.appendChild(labelWrap);
+                    item.appendChild(value);
+                    legend.appendChild(item);
+                });
+            }
+
+            function initChartPlanes(data) {
+                const ctx = document.getElementById('chartPlanes');
+                if (!ctx) return;
+
+                const labels = Object.keys(data);
+                const values = Object.values(data);
+                const colors = labels.map(l => coloresPlan[l] || '#9ca3af');
+
+                if (chartPlanes) chartPlanes.destroy();
+
+                if (labels.length === 0) {
+                    chartPlanes = null;
+                    renderPlanLegend(data);
+                    return;
+                }
+
+                chartPlanes = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors,
+                            borderColor: '#1a1a1a',
+                            borderWidth: 3,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '68%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#262626',
+                                borderColor: '#404040',
+                                borderWidth: 1,
+                                titleColor: '#ffffff',
+                                bodyColor: '#d1d5db',
+                                padding: 10
+                            }
+                        }
+                    }
+                });
+
+                renderPlanLegend(data);
+            }
+
+            window.actualizarGraficoPlanes = function () {
+                const filtro = document.getElementById('filtroPlanChart').value;
+                const data = filtro === 'activos' ? planesActivos : planesHistorico;
+                initChartPlanes(data);
+            };
+
+            window.addEventListener('DOMContentLoaded', () => {
+                if (typeof Chart === 'undefined') return;
+                initChartRegistros();
+                initChartPlanes(planesActivos);
+            });
+        })();
+    </script>
 
     <script>
         let currentPrice = 800;
