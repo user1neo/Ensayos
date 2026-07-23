@@ -2,6 +2,7 @@ package com.gimnasio.admin;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -146,6 +147,8 @@ public class ClienteController {
             model.addAttribute("clientes", clienteRepository.findAll());
             model.addAttribute("vista", "clientes");
             model.addAttribute("error", "Error: La fecha de vencimiento no puede ser anterior a la de inicio.");
+            model.addAttribute("modoEdicion", modoEdicion);
+            model.addAttribute("clienteForm", cliente);
             return "index"; // ✏️ Retorno directo
         }
 
@@ -154,11 +157,23 @@ public class ClienteController {
             model.addAttribute("clientes", clienteRepository.findAll());
             model.addAttribute("vista", "clientes");
             model.addAttribute("error", "La cédula ingresada ya está registrada.");
+            model.addAttribute("modoEdicion", modoEdicion);
+            model.addAttribute("clienteForm", cliente);
             return "index"; // ✏️ Retorno directo
         }
 
         // Si todo sale bien, AQUÍ SÍ se usa el redirect original
-        clienteRepository.save(cliente);
+        try {
+            clienteRepository.save(cliente);
+        } catch (DataIntegrityViolationException ex) {
+            model.addAttribute("clientes", clienteRepository.findAll());
+            model.addAttribute("vista", "clientes");
+            model.addAttribute("error", "La cédula ingresada ya está registrada.");
+            model.addAttribute("modoEdicion", modoEdicion);
+            model.addAttribute("clienteForm", cliente);
+            return "index";
+        }
+
         redirectAttributes.addFlashAttribute("exito", "Cliente procesado exitosamente.");
         return "redirect:/clientes";
     }
