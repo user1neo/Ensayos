@@ -10,20 +10,21 @@ public class Cliente {
 
     @Id
     @NotNull(message = "La cédula no puede estar vacía")
-    @Positive(message = "La cédula debe ser un número positivo")
+    @Positive(message = "La cédula debe ser un número entero positivo")
+    @Max(value = 9999999999L, message = "La cédula no puede tener más de 10 dígitos")
     private Long id;
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 3, max = 50, message = "El nombre debe tener entre 3 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}ÁÉÍÓÚáéíóúÑñ ]{3,50}$", message = "El nombre solo puede tener letras y espacios, sin números ni caracteres especiales")
     private String nombre;
 
     @NotBlank(message = "El correo electrónico es obligatorio")
-    @Email(message = "Debe proporcionar un formato de correo válido")
+    @Email(message = "Ingresa un correo válido, por ejemplo: nombre@dominio.com")
     private String email;
 
     @NotBlank(message = "El teléfono es obligatorio")
-    @Size(min = 10, max = 10, message = "El teléfono debe tener exactamente 10 dígitos")
-    @Pattern(regexp = "\\d{10}", message = "El teléfono debe ser un número de 10 dígitos")
+    @Pattern(regexp = "^3\\d{9}$", message = "El teléfono debe tener 10 dígitos y empezar en 3")
     private String telefono;
 
     @NotNull(message = "La edad es obligatoria")
